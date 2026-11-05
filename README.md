@@ -4,7 +4,11 @@ GazeForge is an HCI research prototype. It asks whether **implicit gaze feedback
 
 The system shows 4 design options per round and measures how long you look at each one and how often you come back to it. It then evolves the next round toward the designs that held your attention. You never have to click.
 
-![Steering feedback between rounds](docs/screenshots/steering.png)
+![GazeForge demo: attention steers SDXL-Turbo lamp designs round by round](docs/demo.gif)
+
+*Replay of a real session. SDXL-Turbo generated every image live on an M-series Mac (about 6.5 s per round of 4). In this recording the mouse stood in for gaze, with a consistent "warm amber lamp" preference. The amber glow shows accumulated attention, and the bars between rounds show each option's influence on the next round. [MP4 version](docs/demo.mp4)*
+
+<p align="center"><img src="docs/evolution.png" width="560" alt="Six rounds of gaze-steered evolution converging on warm, arched, dome-shade lamps"></p>
 
 ## Research questions
 

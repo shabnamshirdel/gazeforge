@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GazeForge — gaze-steered generative design</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23f2b544'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%23111'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- ============ SETUP ============ -->
+  <section id="screen-setup" class="screen active">
+    <div class="setup-card">
+      <header class="brand">
+        <div class="logo" aria-hidden="true"><span></span></div>
+        <div>
+          <h1>GazeForge</h1>
+          <p class="sub">Steering generative design with where you look</p>
+        </div>
+      </header>
+
+      <form id="setup-form" autocomplete="off">
+        <div class="grid2">
+          <label>Participant ID
+            <input name="pid" value="P01" required />
+          </label>
+          <label>Condition
+            <select name="condition">
+              <option value="explicit">A · Explicit selection (click)</option>
+              <option value="gaze" selected>B · Gaze-implicit steering</option>
+              <option value="hybrid">C · Hybrid (gaze steers, click confirms)</option>
+            </select>
+          </label>
+          <label>Gaze source
+            <select name="gazeSource">
+              <option value="webcam">Webcam — eye gaze (MediaPipe)</option>
+              <option value="headpose">Webcam — head pointing (most robust)</option>
+              <option value="mouse">Mouse as gaze (dev / demo)</option>
+            </select>
+          </label>
+          <label>Generator
+            <select name="generator">
+              <option value="mock">Mock — parametric lamps (offline)</option>
+              <option value="comfy">ComfyUI via backend</option>
+            </select>
+          </label>
+          <label>Round length (s) <small>gaze / hybrid; 0 = Space only</small>
+            <input name="roundSec" type="number" min="0" max="60" value="10" />
+          </label>
+          <label>Max rounds
+            <input name="maxRounds" type="number" min="2" max="30" value="10" />
+          </label>
+        </div>
+        <label>Design brief
+          <input name="brief" value="A floor lamp for a cozy reading corner" />
+        </label>
+        <label class="backend-row">Backend URL <small>(for ComfyUI mode and log upload)</small>
+          <input name="backend" placeholder="http://localhost:8000" />
+          <span id="backend-status" class="pill">not checked</span>
+        </label>
+        <fieldset class="toggles">
+          <label><input type="checkbox" name="showGaze" /> Show gaze cursor</label>
+          <label><input type="checkbox" name="showHeat" /> Show live attention glow</label>
+          <label><input type="checkbox" name="showSteer" checked /> Show steering feedback between rounds</label>
+          <label><input type="checkbox" name="questionnaires" checked /> NASA-TLX + SUS after trial</label>
+        </fieldset>
+        <button class="primary" type="submit">Start session</button>
+        <p class="hint">Tip: use full-screen (F11) and keep your head roughly still after calibration. Keys: <kbd>Space</kbd> next round · <kbd>Enter</kbd> done · <kbd>G</kbd> gaze cursor · <kbd>H</kbd> attention glow</p>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============ CALIBRATION ============ -->
+  <section id="screen-calib" class="screen">
+    <div id="calib-msg" class="calib-msg">
+      <h2>Calibration</h2>
+      <p>Look at each dot until it disappears. Keep your head still.</p>
+      <p id="calib-status" class="muted">Loading…</p>
+      <button id="calib-start" class="primary" disabled>Begin</button>
+    </div>
+    <div id="calib-dot" class="calib-dot hidden"></div>
+    <div id="calib-result" class="calib-msg hidden">
+      <h2>Calibration done</h2>
+      <p id="calib-acc"></p>
+      <div class="row">
+        <button id="calib-redo">Recalibrate</button>
+        <button id="calib-continue" class="primary">Continue</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TRIAL ============ -->
+  <section id="screen-trial" class="screen">
+    <header class="trial-head">
+      <div class="brief" id="trial-brief"></div>
+      <div class="meta">
+        <span class="pill" id="trial-cond"></span>
+        <span class="pill" id="trial-round"></span>
+      </div>
+    </header>
+    <div class="timer"><div id="timer-bar"></div></div>
+    <main id="grid" class="grid" aria-live="polite"></main>
+    <footer class="trial-foot">
+      <p id="trial-instr"></p>
+      <div class="row">
+        <button id="btn-next">Next round <kbd>Space</kbd></button>
+        <button id="btn-done" class="primary">I'm happy with one <kbd>Enter</kbd></button>
+      </div>
+    </footer>
+    <div id="banner" class="banner hidden"></div>
+  </section>
+
+  <!-- ============ QUESTIONNAIRE ============ -->
+  <section id="screen-quest" class="screen">
+    <form id="quest-form" class="quest">
+      <h2>Quick questions about this condition</h2>
+      <h3>Workload (NASA-TLX)</h3>
+      <div id="tlx"></div>
+      <h3>Usability (SUS)</h3>
+      <p class="muted">1 = strongly disagree · 5 = strongly agree</p>
+      <div id="sus"></div>
+      <button class="primary" type="submit">Submit</button>
+    </form>
+  </section>
+
+  <!-- ============ SUMMARY ============ -->
+  <section id="screen-summary" class="screen">
+    <div class="setup-card">
+      <h2>Trial complete</h2>
+      <div id="summary-final" class="summary-final"></div>
+      <dl id="summary-stats" class="stats"></dl>
+      <div class="row">
+        <button id="dl-json">Download JSON</button>
+        <button id="dl-csv">Download CSV</button>
+        <button id="btn-again" class="primary">Run another condition</button>
+      </div>
+      <p id="upload-status" class="muted"></p>
+    </div>
+  </section>
+
+  <!-- Overlays -->
+  <div id="gaze-dot" class="gaze-dot hidden"></div>
+  <video id="cam" class="cam hidden" playsinline muted></video>
+  <div id="face-warn" class="face-warn hidden">Face not detected — look at the screen</div>
+  <div id="toast" class="toast hidden"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

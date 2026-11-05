@@ -1,0 +1,6 @@
+data/*.json
+data/*.log
+__pycache__/
+analysis/trial_summary.csv
+.venv/
+.DS_Store

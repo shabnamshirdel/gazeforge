@@ -18,7 +18,7 @@ if curl -s -o /dev/null http://127.0.0.1:8188/system_stats; then
   echo "ComfyUI is already running on port 8188 — reusing it."
 else
   echo "Starting ComfyUI (log: data/comfyui.log)…"
-  (cd "$COMFY_DIR" && "$COMFY_PY" main.py --listen 127.0.0.1 --port 8188 > "$HERE/data/comfyui.log" 2>&1) &
+  (cd "$COMFY_DIR" && "$COMFY_PY" main.py --listen 127.0.0.1 --port 8188 --cache-classic > "$HERE/data/comfyui.log" 2>&1) &
   COMFY_PID=$!
   trap 'echo; echo "Stopping ComfyUI…"; kill $COMFY_PID 2>/dev/null; pkill -P $COMFY_PID 2>/dev/null' EXIT
   for i in $(seq 1 120); do

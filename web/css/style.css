@@ -126,3 +126,6 @@ input, select { background: var(--bg); border: 1px solid var(--line); border-rad
 .stats div { background: var(--panel-2); border-radius: 12px; padding: 10px 12px; }
 .stats dt { color: var(--muted); font-size: 0.75rem; }
 .stats dd { margin: 4px 0 0; font-size: 1.2rem; font-weight: 600; }
+
+.demo-note { background: #221d12; border: 1px solid #4a3b17; color: #e8dcc2; border-radius: 12px; padding: 12px 14px; font-size: 0.9rem; line-height: 1.45; margin: -6px 0 18px; }
+input:disabled { opacity: .6; }

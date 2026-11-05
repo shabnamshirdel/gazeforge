@@ -3,6 +3,7 @@ import { randomGenome, evolve, renderSVG, toPrompt, diversity, genomeDistance } 
 import { MouseGaze, WebcamGaze } from './gaze.js';
 import { newSession, toCSV, download, upload } from './logger.js';
 import { renderQuestionnaires, scoreQuestionnaires } from './questionnaires.js';
+import { loadBank, hasBank, bankStart, snapToBank } from './bank.js';
 
 const $ = (s) => document.querySelector(s);
 const N_OPTIONS = 4;
@@ -51,6 +52,32 @@ if (location.protocol.startsWith('http') && location.port) form.backend.value = 
 form.backend.addEventListener('change', checkBackend);
 checkBackend();
 
+// Static hosting (e.g. GitHub Pages): no backend, but a pre-rendered image bank may be available
+const STATIC = new URLSearchParams(location.search).has('static') || !(location.protocol.startsWith('http') && location.port);
+(async () => {
+  const bankOk = await hasBank();
+  const sel = form.generator;
+  if (bankOk) {
+    sel.insertAdjacentHTML('afterbegin', '<option value="bank">Real SDXL-Turbo image bank (offline)</option>');
+    if (STATIC) sel.value = 'bank';
+  }
+  if (STATIC) {
+    sel.querySelector('option[value="comfy"]')?.remove();
+    form.backend.closest('label').classList.add('hidden');
+    form.backend.value = ''; // no server on static hosting: logs are downloaded instead of uploaded
+    form.gazeSource.value = 'mouse';
+    form.showGaze.checked = true; form.showHeat.checked = true; form.questionnaires.checked = false; form.maxRounds.value = 8;
+    document.getElementById('demo-note')?.classList.remove('hidden');
+  }
+  const syncBrief = async () => {
+    const isBank = sel.value === 'bank';
+    form.brief.disabled = isBank;
+    if (isBank) form.brief.value = (await loadBank()).brief;
+  };
+  sel.addEventListener('change', syncBrief);
+  syncBrief();
+})();
+
 async function checkBackend() {
   const pill = $('#backend-status');
   const url = form.backend.value.trim().replace(/\/$/, '');
@@ -74,7 +101,7 @@ form.addEventListener('submit', async (e) => {
     generator: fd.get('generator'),
     roundSec: Number(fd.get('roundSec')),
     maxRounds: Number(fd.get('maxRounds')),
-    brief: fd.get('brief').trim(),
+    brief: (fd.get('brief') ?? form.brief.value).trim(),
     backend: fd.get('backend').trim().replace(/\/$/, ''),
     showGaze: fd.get('showGaze') === 'on',
     showHeat: fd.get('showHeat') === 'on',
@@ -223,7 +250,7 @@ function startTrial() {
   S.session.calibration = S.calib;
   S.sessionT0 = now();
   S.round = 0;
-  S.options = diverseStart(N_OPTIONS);
+  S.options = S.cfg.generator === 'bank' ? bankStart(N_OPTIONS) : diverseStart(N_OPTIONS);
   S.seen = [...S.options];
   $('#trial-brief').textContent = S.cfg.brief;
   $('#trial-cond').textContent = COND_LABEL[S.cfg.condition];
@@ -252,6 +279,13 @@ function buildCards() {
 }
 
 async function renderOptions() {
+  if (S.cfg.generator === 'bank') {
+    await Promise.all(S.options.map((g, i) => new Promise((resolve) => {
+      const img = new Image(); img.onload = img.onerror = resolve; img.src = `bank/${g.file}`; img.alt = `design option ${i + 1}`;
+      S.cards[i].querySelector('.art').replaceChildren(img);
+    })));
+    return { generator: 'bank' };
+  }
   if (S.cfg.generator === 'mock') {
     S.options.forEach((g, i) => { S.cards[i].querySelector('.art').innerHTML = renderSVG(g); });
     return { generator: 'mock' };
@@ -391,7 +425,7 @@ async function endRound(endedBy, clickedSlot = null) {
   if (isLast) { enterPick(true); return; }
   $('#grid').classList.add('fading');
   await sleep(300);
-  S.options = next;
+  S.options = S.cfg.generator === 'bank' ? snapToBank(next, S.options) : next;
   S.seen.push(...next.filter((g) => !g.elite));
   S.round += 1;
   beginRound();

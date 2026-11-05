@@ -4,6 +4,9 @@ GazeForge is an HCI research prototype. It asks whether **implicit gaze feedback
 
 The system shows 4 design options per round and measures how long you look at each one and how often you come back to it. It then evolves the next round toward the designs that held your attention. You never have to click.
 
+### ▶ [Try the live demo: shabnamshirdel.github.io/gazeforge](https://shabnamshirdel.github.io/gazeforge/)
+Runs entirely in your browser. Start with *Mouse as gaze* (hovering counts as looking), then try *Webcam*, which uses MediaPipe on your device; no video leaves your computer. The live demo draws from a bank of **300 real SDXL-Turbo renders**, so it needs no GPU server. Evolution runs as usual, and each new design snaps to the closest rendered lamp.
+
 ![GazeForge demo: attention steers SDXL-Turbo lamp designs round by round](docs/demo.gif)
 
 *Replay of a real session. SDXL-Turbo generated every image live on an M-series Mac (about 6.5 s per round of 4). In this recording the mouse stood in for gaze, with a consistent "warm amber lamp" preference. The amber glow shows accumulated attention, and the bars between rounds show each option's influence on the next round. [MP4 version](docs/demo.mp4)*
@@ -26,7 +29,9 @@ The system shows 4 design options per round and measures how long you look at ea
 ## Architecture
 
 ```
-web/                    Browser app (vanilla JS ES modules, no build step)
+web/                    Browser app (vanilla JS ES modules, no build step); also the static Pages demo
+  js/bank.js            Image-bank generator for the hosted demo (nearest real render to each evolved genome)
+  bank/                 300 SDXL-Turbo renders (WebP, 2.1 MB) + manifest with their genomes
   js/gaze.js            MediaPipe FaceLandmarker → iris + head-pose features → ridge regression → One-Euro filter
   js/genome.js          Parametric design space, gaze-weighted interactive evolution, prompt builder, SVG mock renderer
   js/app.js             Session flow: calibration → rounds → final pick → questionnaires → summary
@@ -62,6 +67,9 @@ python server.py                # mock mode → open http://localhost:8000
 Choose **Mouse as gaze** to try it right away, or **Webcam** to run the real gaze pipeline. The webcam needs internet access the first time, to load MediaPipe from the CDN.
 
 Keys: `Space` next round · `Enter` done · `G` gaze cursor · `H` live attention glow.
+
+### Hosted demo (no server)
+The `web/` folder is a static site. When no backend is found, it uses `web/bank/`: 300 SDXL-Turbo renders with their genomes, built with `python tools/build_bank.py data/bank_part_*.json`. GitHub Actions (`.github/workflows/pages.yml`) publishes it to GitHub Pages on every push. To test it locally: `python -m http.server -d web 8200`, then open `http://localhost:8200/?static`.
 
 ### With real image generation on a Mac (Apple Silicon), two commands
 
